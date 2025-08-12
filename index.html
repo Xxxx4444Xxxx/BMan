@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bö-Man</title>
+<style>
+  body { margin: 0; background: black; overflow: hidden; }
+  canvas { display: block; margin: auto; background: #000; }
+  #controls {
+    position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 10px; z-index: 10;
+  }
+  .btn {
+    width: 60px; height: 60px; background: rgba(255,255,255,0.1);
+    border-radius: 10px; display: flex; justify-content: center; align-items: center;
+    color: white; font-size: 24px; user-select: none; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="controls">
+  <div class="btn" data-dir="left">◀</div>
+  <div class="btn" data-dir="up">▲</div>
+  <div class="btn" data-dir="down">▼</div>
+  <div class="btn" data-dir="right">▶</div>
+</div>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const TILE = 32;
+const cols = Math.floor(canvas.width / TILE);
+const rows = Math.floor(canvas.height / TILE);
+
+let flowers = [];
+let flies = [];
+let player = { x: 5, y: 5, dir: 'right', size: TILE * 1.4 }; // bigger Bö-Man
+
+// Init flowers
+for (let y = 2; y < rows - 2; y++) {
+  for (let x = 2; x < cols - 2; x++) {
+    if ((x + y) % 3 === 0) flowers.push({ x, y });
+  }
+}
+
+// Init flies
+for (let i = 0; i < 4; i++) {
+  flies.push({
+    x: Math.floor(Math.random() * cols),
+    y: Math.floor(Math.random() * rows),
+    dir: 'left'
+  });
+}
+
+// Draw functions
+function drawFlower(fx, fy) {
+  ctx.fillStyle = 'green';
+  ctx.fillRect(fx * TILE + TILE/2 - 2, fy * TILE + TILE/2, 4, 8);
+  ctx.beginPath();
+  ctx.arc(fx * TILE + TILE/2, fy * TILE + TILE/2 - 4, 6, 0, Math.PI * 2);
+  ctx.fillStyle = 'pink';
+  ctx.fill();
+}
+
+function drawFly(fx, fy) {
+  ctx.fillStyle = 'black';
+  ctx.beginPath();
+  ctx.ellipse(fx * TILE + TILE/2, fy * TILE + TILE/2, 12, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'white';
+  ctx.beginPath();
+  ctx.arc(fx * TILE + TILE/2 - 6, fy * TILE + TILE/2 - 4, 3, 0, Math.PI * 2);
+  ctx.arc(fx * TILE + TILE/2 + 6, fy * TILE + TILE/2 - 4, 3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawPlayer() {
+  ctx.fillStyle = 'violet';
+  ctx.beginPath();
+  let px = player.x * TILE + TILE/2;
+  let py = player.y * TILE + TILE/2;
+  ctx.moveTo(px, py);
+  ctx.arc(px, py, player.size/2, Math.PI/6, -Math.PI/6, false);
+  ctx.closePath();
+  ctx.fill();
+  // Eye
+  ctx.fillStyle = 'white';
+  ctx.beginPath();
+  ctx.arc(px + 6, py - 8, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'black';
+  ctx.beginPath();
+  ctx.arc(px + 6, py - 8, 2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function update() {
+  // Move player
+  if (player.dir === 'left') player.x -= 0.1;
+  if (player.dir === 'right') player.x += 0.1;
+  if (player.dir === 'up') player.y -= 0.1;
+  if (player.dir === 'down') player.y += 0.1;
+  
+  // Eat flowers
+  flowers = flowers.filter(f => {
+    if (Math.hypot(f.x - player.x, f.y - player.y) < 0.5) {
+      return false;
+    }
+    return true;
+  });
+}
+
+function loop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  flowers.forEach(f => drawFlower(f.x, f.y));
+  flies.forEach(fl => drawFly(fl.x, fl.y));
+  drawPlayer();
+  update();
+  requestAnimationFrame(loop);
+}
+loop();
+
+// Controls
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft') player.dir = 'left';
+  if (e.key === 'ArrowRight') player.dir = 'right';
+  if (e.key === 'ArrowUp') player.dir = 'up';
+  if (e.key === 'ArrowDown') player.dir = 'down';
+});
+document.querySelectorAll('.btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    player.dir = btn.dataset.dir;
+  });
+});
+
+// Swipe control
+let touchStartX, touchStartY;
+canvas.addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+});
+canvas.addEventListener('touchend', e => {
+  let dx = e.changedTouches[0].clientX - touchStartX;
+  let dy = e.changedTouches[0].clientY - touchStartY;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    player.dir = dx > 0 ? 'right' : 'left';
+  } else {
+    player.dir = dy > 0 ? 'down' : 'up';
+  }
+});
+</script>
+</body>
+</html>
